@@ -1,0 +1,6 @@
+*.pyc
+ais_db_*
+contacts_db_*
+contacts_db*
+Processed_ais/
+*.csv
