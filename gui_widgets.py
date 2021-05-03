@@ -15,9 +15,9 @@ class ContactWidget(QWidget):
 		super(ContactWidget, self).__init__()
 		self.aisCode = 0
 		self.aisTag = ""
-		self.radioButtons = []
+		self.activitySelects = []
+		self.directionSelects = []
 		self.content = []
-		self.activityBtns = []
 
 		self.layout = QVBoxLayout()
 		self.setLayout(self.layout)
@@ -101,7 +101,7 @@ class ContactWidget(QWidget):
 			btn = QPushButton(type)
 			self.topLayout.addWidget(btn)
 			self.content.append(btn)
-			btn.clicked.connect(partial(self.activity_select, type))
+			btn.clicked.connect(partial(self.activity_select, type, True))
 
 
 	def link_ais(self, mmsi, isA):
@@ -128,7 +128,7 @@ class ContactWidget(QWidget):
 			btn = QPushButton(type)
 			self.topLayout.addWidget(btn)
 			self.content.append(btn)
-			btn.clicked.connect(partial(self.activity_select, type))
+			btn.clicked.connect(partial(self.activity_select, type, True))
 
 		if fromStart:
 			self.populateLowerContent()
@@ -144,7 +144,7 @@ class ContactWidget(QWidget):
 			btn = QPushButton(type)
 			self.topLayout.addWidget(btn)
 			self.content.append(btn)
-			btn.clicked.connect(partial(self.activity_select, type))
+			btn.clicked.connect(partial(self.activity_select, type, True))
 
 		if fromStart:
 			self.populateLowerContent()
@@ -160,26 +160,48 @@ class ContactWidget(QWidget):
 			btn = QPushButton(type)
 			self.topLayout.addWidget(btn)
 			self.content.append(btn)
-			btn.clicked.connect(partial(self.activity_select, type))
+			btn.clicked.connect(partial(self.activity_select, type, False))
 
 		if fromStart:
 			self.populateLowerContent()
 
-	def activity_select(self, vesselType):
+	def activity_select(self, vesselType, isVessel):
 		self.vesselType = vesselType
 		self.clear_content()
-		activityTypes = ["Trolling", "Jigging", "UnID fishing", "Transiting",
-						 "Stationary non-fishing", "Marine mammal viewing"]
+		if isVessel:
+			activityTypes = ["Trolling", "Jigging", "UnID fishing", "Transiting",
+							 "Stationary non-fishing", "Marine mammal viewing"]
+		else:
+			activityTypes = ["Resting", "Travelling", "Foraging", "Socializing", "Unknown", "Misc"]
 
 		typeLabel = QLabel(vesselType)
 		self.topLayout.addWidget(typeLabel)
 		self.content.append(typeLabel)
+		self.activityRadioGroup = QButtonGroup()
 
 		for activity in activityTypes:
 			btn = QRadioButton(activity)
+			self.activityRadioGroup.addButton(btn)
 			self.content.append(btn)
 			self.topLayout.addWidget(btn)
-			self.radioButtons.append(btn)
+			self.activitySelects.append(btn)
+
+		divider = QHLine()
+		self.content.append(divider)
+		self.topLayout.addWidget(divider)
+		directionLabel = QLabel("Direction of travel:")
+		self.topLayout.addWidget(directionLabel)
+		self.content.append(directionLabel)
+
+		self.directionRadioGroup = QButtonGroup()
+
+		for direction in ["North", "South"]:
+			btn = QRadioButton(direction)
+			self.directionRadioGroup.addButton(btn)
+			self.content.append(btn)
+			self.topLayout.addWidget(btn)
+			self.directionSelects.append(btn)
+
 
 	def save_contact(self):
 		# If declared as ais and no ais added yet, don't do anything:
@@ -189,9 +211,13 @@ class ContactWidget(QWidget):
 		tags = "dist=" + str(self.distance)
 		tags += ",lat=" + str(self.lat) + ",lon=" + str(self.lon)
 		tags += ",type=" + self.vesselType
-		for btn in self.radioButtons:
+		for btn in self.activitySelects:
 			if btn.isChecked():
 				tags += ",activity="
+				tags += btn.text()
+		for btn in self.directionSelects:
+			if btn.isChecked():
+				tags += ",direction="
 				tags += btn.text()
 		if self.repeatBox.isChecked():
 			tags += ",repeat=True"
@@ -209,7 +235,7 @@ class ContactWidget(QWidget):
 		for item in self.content:
 			item.deleteLater()
 		self.content = []
-		self.radioButtons = []
+		self.activitySelects = []
 
 
 # TODO: improve this interface. Maybe allow for linking to AIS?
@@ -577,3 +603,11 @@ class SwitchCalibrateDatabasePopup(QWidget):
 class recalibrate(QWidget):
 	def __init__(self, targetFunc):
 		super(recalibrate, self).__init__()
+
+
+# https://stackoverflow.com/questions/5671354/how-to-programmatically-make-a-horizontal-line-in-qt
+class QHLine(QFrame):
+	def __init__(self):
+		super(QHLine, self).__init__()
+		self.setFrameShape(QFrame.HLine)
+		self.setFrameShadow(QFrame.Sunken)
