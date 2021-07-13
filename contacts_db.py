@@ -324,6 +324,7 @@ class Contact_db:
 					repeat = False
 					type = None
 					activity = None
+					direction = None
 					tags = []
 					for tag in c.tags.split(','):
 						tag = tag.strip()
@@ -335,12 +336,14 @@ class Contact_db:
 								repeat = split[1] == 'True'
 							elif split[0] == 'activity':
 								activity = split[1]
+							elif split[0] == 'direction':
+								direction = split[1]
 						else:
 							if tag:
 								tags.append(tag)
 					tags = ', '.join(tags) if tags else None
 
-					linesDay.append([c.time, geopoint, aisClass, mmsi, repeat, type, activity, tags, (c.x, c.y)])
+					linesDay.append([c.time, geopoint, aisClass, mmsi, repeat, type, activity, tags, (c.x, c.y), direction])
 
 			# Sort the day's contacts, then add them to the master list
 			linesDay.sort(key=lambda x: x[0])
@@ -356,7 +359,7 @@ class Contact_db:
 					date[0] += 1
 
 		with open(fileName, 'w+') as csv:
-			csv.write("Id,Date,Time,Latitude,Longitude,AIS class,MMSI,Repeat?,Type,Activity,Notes,X,Y\n")
+			csv.write("Id,Date,Time,Latitude,Longitude,AIS class,MMSI,Repeat?,Type,Activity,Notes,X,Y,Direction\n")
 			for i, line in enumerate(lines):
 				text = str(i) + ','
 				text += str(line[0][0]) + '-' + str(line[0][1]) + '-' + str(line[0][2]) + ","
@@ -374,7 +377,8 @@ class Contact_db:
 				text += line[5] + ',' if line[5] else ','
 				text += line[6] + ',' if line[6] else ','
 				text += line[7] + ',' if line[7] else ','
-				text += str(line[8][0]) + "," + str(line[8][1]) + '\n'
+				text += str(line[8][0]) + "," + str(line[8][1]) + ','
+				text += line[9] + '\n' if line[9] else '\n'
 				csv.write(text)
 
 
