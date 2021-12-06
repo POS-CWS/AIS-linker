@@ -2,7 +2,7 @@
 A tool for overlaying AIS tracks on photobot images, and recording vessel traffic.
 
 #### Setup
-This tool requires Python 3 with PyQt5 added.
+This tool requires Python 3 with the PyQt5 library added.
 
 While this tool can be downloaded and used anywhere, it relies on a number of folders and files in its local folder. When multiple people use this tool, it is highly recommended to use it from a single networked location accessable to everyone using it.
 
@@ -54,7 +54,7 @@ Several display options are available to make identifying which ais tracks belon
 
 #### Creating Reports
 
-Todo: descriptiions of each report type
+Todo: descriptions of each report type
 
 #### Calibrate Mode
 

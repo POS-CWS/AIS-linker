@@ -872,6 +872,7 @@ class Program(QMainWindow):
 	def closeEvent(self, event):
 		self.contactsDB.save_db()
 		self.caliDB.save_db()
+		# todo - meta.txt isn't used. Remove?
 		with open('meta.txt', 'w+') as meta:
 			meta.write('contacts_db=' + str(self.contactsFolder) + '\n')
 

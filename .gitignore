@@ -5,3 +5,5 @@ Processed_ais/
 *.csv
 .idea/*
 calibration*
+test folder/*
+test_minimal_set*
