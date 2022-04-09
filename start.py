@@ -6,9 +6,6 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-from functools import partial
-
-from ais_db import AIS_db
 from calibration_db import Calibration_db
 from common import file_time, sec_time
 from gui_widgets import *
@@ -16,9 +13,9 @@ from gui_widgets import *
 # Define colours for contacts and ais lines
 colA = QtCore.Qt.red
 colB = QtCore.Qt.magenta
-colSuspect = QColor(255, 0, 127)
-colVessel = QColor(255, 255, 0)
-colMarineMammal = QColor(0, 255, 255)
+colSuspect = QColor(255, 0, 127)			# pink
+colVessel = QColor(255, 255, 0)				# yellow
+colMarineMammal = QColor(0, 255, 255)		# aqua
 
 
 class Program(QMainWindow):
@@ -48,7 +45,7 @@ class Program(QMainWindow):
 		self.caliFolder = ""
 
 		self.contactsDB = Contact_db(self.contactsFolder)
-		self.caliDB = Calibration_db(self.caliFolder, 5184, 3456)
+		self.caliDB = Calibration_db(5184, 3456)
 
 		self.rbInWidth = 200
 		self.rbExWidth = 240
@@ -221,13 +218,6 @@ class Program(QMainWindow):
 		# Get user to select the databases being used (can be changed later)
 		self.change_contact_db_caller()
 
-	# def init_georectifier(self, width=5184, height=3456):
-	# 	self.geo = Georectifier(width, height, False)
-	# 	self.geo.set_camera_pos(48.781065, -123.051861, 25)
-	# 	self.geo.set_ref_point(48.732954, -123.029852, 2, 2190, 100)
-	# 	self.geo.set_ref_point(48.732631, -123.040011, 2, 3806, 94)
-	# 	self.geo.init()
-
 	def setChildrenFocusPolicy(self, policy):
 		def recursiveSetChildFocusPolicy(parentQWidget):
 			for childQWidget in parentQWidget.findChildren(QWidget):
@@ -238,7 +228,6 @@ class Program(QMainWindow):
 
 	# Occurs whenever a key is pressed
 	def keyPressEvent(self, eventQKeyEvent):
-		# print(eventQKeyEvent.key())
 		keyNum = eventQKeyEvent.key()
 		# Left click
 		if keyNum == 16777234:
@@ -768,7 +757,7 @@ class Program(QMainWindow):
 		# Load new database
 		print(folderName)
 		self.caliFolder = folderName
-		self.caliDB = Calibration_db(self.caliFolder, 5184, 3456)
+		self.caliDB = Calibration_db(5184, 3456, self.caliFolder)
 		if not self.caliDB.dbLoaded:
 			print('warning: calibration database did not load metadata properly')
 
@@ -868,24 +857,9 @@ class Program(QMainWindow):
 		return res + str(time[5])
 
 	# Save database when the program is exited - name as required by pyqt
-	# Also writes 'metadata' to be loaded the next time the program is started
 	def closeEvent(self, event):
 		self.contactsDB.save_db()
 		self.caliDB.save_db()
-		# todo - meta.txt isn't used. Remove?
-		with open('meta.txt', 'w+') as meta:
-			meta.write('contacts_db=' + str(self.contactsFolder) + '\n')
-
-	# # Loads settings on start-up
-	# def load_metadata(self):
-	# 	try:
-	# 		with open('meta.txt', 'r') as meta:
-	# 			for line in meta:
-	# 				if re.search(r"^contacts_db=.+", line):
-	# 					self.contactsFolder = line.split('=')[1].rstrip()
-	# 	except:
-	# 		print("Cannot read meta.txt")
-	# 		self.contactsFolder = "contacts_db1"
 
 	def link_ais(self, mmsi):
 		if self.contactWidg:

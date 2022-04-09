@@ -5,7 +5,7 @@ from ais_db import AIS_db
 
 
 class Calibration_db:
-	def __init__(self, folder, imHeight, imWidth):
+	def __init__(self, imHeight, imWidth, folder=None):
 		self.folder = folder
 		self.dbLoaded = False
 		self.cameraPos = [0, 0, 0]
@@ -32,41 +32,44 @@ class Calibration_db:
 	# and doesn't change for a given camera.
 	def load_metadata(self):
 		self.dbLoaded = True
-		with open(os.path.join(self.folder, 'meta.txt'), 'r') as meta:
-			# Parse and save each line. Ignore extras (comments)
-			for line in meta.readlines():
-				line = line.strip()
-				if line.startswith("camlat:"):
-					self.cameraPos[0] = float(line[7:])
-				elif line.startswith("camlon:"):
-					self.cameraPos[1] = float(line[7:])
-				elif line.startswith("camheight:"):
-					self.cameraPos[2] = float(line[10:])
+		if self.folder:
+			metafile = os.path.join(self.folder, 'meta.txt')
+			if os.path.exists(metafile):
+				with open(metafile, 'r') as meta:
+					# Parse and save each line. Ignore extras (comments)
+					for line in meta.readlines():
+						line = line.strip()
+						if line.startswith("camlat:"):
+							self.cameraPos[0] = float(line[7:])
+						elif line.startswith("camlon:"):
+							self.cameraPos[1] = float(line[7:])
+						elif line.startswith("camheight:"):
+							self.cameraPos[2] = float(line[10:])
 
-				elif line.startswith("ref1lat:"):
-					self.ref1Pos[0] = float(line[8:])
-				elif line.startswith("ref1lon:"):
-					self.ref1Pos[1] = float(line[8:])
-				elif line.startswith("ref1height:"):
-					self.ref1Pos[2] = float(line[11:])
+						elif line.startswith("ref1lat:"):
+							self.ref1Pos[0] = float(line[8:])
+						elif line.startswith("ref1lon:"):
+							self.ref1Pos[1] = float(line[8:])
+						elif line.startswith("ref1height:"):
+							self.ref1Pos[2] = float(line[11:])
 
-				elif line.startswith("ref2lat:"):
-					self.ref2Pos[0] = float(line[8:])
-				elif line.startswith("ref2lon:"):
-					self.ref2Pos[1] = float(line[8:])
-				elif line.startswith("ref2height:"):
-					self.ref2Pos[2] = float(line[11:])
+						elif line.startswith("ref2lat:"):
+							self.ref2Pos[0] = float(line[8:])
+						elif line.startswith("ref2lon:"):
+							self.ref2Pos[1] = float(line[8:])
+						elif line.startswith("ref2height:"):
+							self.ref2Pos[2] = float(line[11:])
 
-				elif line.startswith("latH:"):
-					self.latBounds[1] = float(line[5:])
-				elif line.startswith("latL:"):
-					self.latBounds[0] = float(line[5:])
-				elif line.startswith("lonH:"):
-					self.lonBounds[1] = float(line[5:])
-				elif line.startswith("lonL:"):
-					self.lonBounds[0] = float(line[5:])
-				elif line.startswith("aisFolder:"):
-					self.aisFolder = line.split(':')[1]
+						elif line.startswith("latH:"):
+							self.latBounds[1] = float(line[5:])
+						elif line.startswith("latL:"):
+							self.latBounds[0] = float(line[5:])
+						elif line.startswith("lonH:"):
+							self.lonBounds[1] = float(line[5:])
+						elif line.startswith("lonL:"):
+							self.lonBounds[0] = float(line[5:])
+						elif line.startswith("aisFolder:"):
+							self.aisFolder = line.split(':')[1]
 
 		# ensure non-zero latitudes and longitudes. If some of these are missing, we can't work
 		# Heights may still be zero, and are defaulted to this if not saved.
