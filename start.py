@@ -10,15 +10,17 @@ from calibration_db import Calibration_db
 from common import file_time, sec_time
 from gui_widgets import *
 
-# Define colours for contacts and ais lines
+# Define colours for ais lines
 colA = QtCore.Qt.red
 colB = QtCore.Qt.magenta
+# Define colours for contact markers
 colSuspect = QColor(255, 0, 127)			# pink
 colVessel = QColor(255, 255, 0)				# yellow
 colMarineMammal = QColor(0, 255, 255)		# aqua
 
 
 class Program(QMainWindow):
+	# sequence of 3 images are cached to improve loading times for the basic next image/previous buttons
 	nextIm, currIm, prevIm = None, None, None
 	dispImg = None
 	imageIndex = 0
@@ -32,14 +34,14 @@ class Program(QMainWindow):
 
 	def __init__(self):
 		super(Program, self).__init__()
-		self.setWindowTitle('AIS Clicky tool')
+		self.setWindowTitle('AIS Linker')
 
 		# mode list: '': None, "c": Calibrate
 		self.mode = ''
 		self.caliWidg = None
 		self.reportWin = None
-		self.AISRenderDistance = 150000
-		self.AISTimeLimit = 60
+		self.AISRenderDistance = 150000			# in meters
+		self.AISTimeLimit = 60					# in seconds
 
 		self.contactsFolder = ""
 		self.caliFolder = ""
@@ -81,9 +83,9 @@ class Program(QMainWindow):
 		# Set up the right bar
 
 		# Label for the image time
-		self.dateLbl = QLabel("Date")
+		self.dateLbl = QLabel("Date: -")
 		self.dateLbl.setAlignment(QtCore.Qt.AlignCenter)
-		self.timeLbl = QLabel("00:00:00")
+		self.timeLbl = QLabel("Time: -")
 		self.timeLbl.setAlignment(QtCore.Qt.AlignCenter)
 
 		self.timeLayout = QHBoxLayout()
@@ -133,11 +135,11 @@ class Program(QMainWindow):
 		self.prevBtn.clicked.connect(self.prev_img)
 		self.controlBtnLayout.addWidget(self.prevBtn, 3, 1)
 
-		self.gotoBtn = QPushButton("Go to image")
+		self.gotoBtn = QPushButton("Go to image...")
 		self.gotoBtn.clicked.connect(self.goto_img)
 		self.controlBtnLayout.addWidget(self.gotoBtn, 2, 2)
 
-		self.gotoTimeBtn = QPushButton("Go to time")
+		self.gotoTimeBtn = QPushButton("Go to time...")
 		self.gotoTimeBtn.clicked.connect(self.goto_img_time)
 		self.controlBtnLayout.addWidget(self.gotoTimeBtn, 1, 2)
 
@@ -150,7 +152,7 @@ class Program(QMainWindow):
 		self.barLayout.addWidget(self.imIndexLabel)
 		self.imIndexLabel.setAlignment(QtCore.Qt.AlignCenter)
 
-		# Create "File" menu
+		# Create top bar menus and connect to appropriate functions
 		self.statusBar()
 		self.mainMenu = self.menuBar()
 		self.fileMenu = self.mainMenu.addMenu('&File')
@@ -159,11 +161,6 @@ class Program(QMainWindow):
 		self.loadImgAction.setStatusTip('Load a new set of images')
 		self.loadImgAction.triggered.connect(self.load_image_set)
 		self.fileMenu.addAction(self.loadImgAction)
-
-		# self.loadaisAction = QAction("&Load ais", self)
-		# self.loadaisAction.setStatusTip("Load AIS data")
-		# self.loadaisAction.triggered.connect(self.load_ais_set)
-		# self.fileMenu.addAction(self.loadaisAction)
 
 		self.viewDailySummaryAction = QAction("&Create daily report", self)
 		self.viewDailySummaryAction.triggered.connect(self.create_daily_report)
@@ -212,12 +209,12 @@ class Program(QMainWindow):
 		# Set up arrow key control
 		self.setChildrenFocusPolicy(QtCore.Qt.NoFocus)
 
-
 		self.show()
 
 		# Get user to select the databases being used (can be changed later)
 		self.change_contact_db_caller()
 
+	# required for the arrow key shortcuts for "previous image" and "next image"
 	def setChildrenFocusPolicy(self, policy):
 		def recursiveSetChildFocusPolicy(parentQWidget):
 			for childQWidget in parentQWidget.findChildren(QWidget):
@@ -226,13 +223,13 @@ class Program(QMainWindow):
 
 		recursiveSetChildFocusPolicy(self)
 
-	# Occurs whenever a key is pressed
+	# Occurs whenever a keyboard key is pressed. This function defines the keyboard shortcuts
 	def keyPressEvent(self, eventQKeyEvent):
 		keyNum = eventQKeyEvent.key()
-		# Left click
+		# Left arrow key
 		if keyNum == 16777234:
 			self.prev_img()
-		# Right click
+		# Right arrow key
 		elif keyNum == 16777236:
 			self.next_img()
 		QWidget.keyPressEvent(self, eventQKeyEvent)
@@ -246,7 +243,7 @@ class Program(QMainWindow):
 			self.currIm = self.nextIm
 			self.reload_display(False)
 
-			# Load new next image
+			# Asynchronously load new "next" image, after a brief time to ensure display updates
 			QtCore.QTimer.singleShot(100, self.load_next_img)
 
 	# Move to and display the previous image in sequence
@@ -258,23 +255,27 @@ class Program(QMainWindow):
 			self.currIm = self.prevIm
 			self.reload_display(False)
 
-			# Load new previous image (Delay allows for display to update first)
+			# Asynchronously load new "prev" image, after a brief time to ensure display updates
 			QtCore.QTimer.singleShot(100, self.load_prev_img)
 
-	# Lets the user select a specific image by index
+	# Jumps to a specific image by index
 	def goto_img(self, num=None):
 		ok = True
 		if type(num) == bool:
 			num, ok = QInputDialog.getInt(self, "Jump to image", "Enter a number from 1 to " + str(len(self.imageList)), min=1, max=len(self.imageList))
 			if num:
-				num -= 1			# Index starting at 0 for program, 1 for user
+				num -= 1			# Index starts at 0 for the program, but at 1 for the user
 		if ok:
+			# Load the selected image
 			self.imageIndex = num
 			self.load_curr_img()
 			self.reload_display(False)
+			# Cache the new previous and next image
 			QtCore.QTimer.singleShot(100, self.load_next_img)
 			QtCore.QTimer.singleShot(100, self.load_prev_img)
 
+	# Jumps to the image that is closest to the chosen time
+	# TODO: review this function
 	def goto_img_time(self):
 		num, ok = QInputDialog.getInt(self, "Jump to time", "Enter a time in form: (day/day)hour/hour/minute/minute/second/second")
 		if ok and num >= 10000 and num < 100000000:
@@ -309,6 +310,8 @@ class Program(QMainWindow):
 			QtCore.QTimer.singleShot(100, self.load_prev_img)
 
 	# Refreshes the display to the currIm (Current image), no zoom.
+	# TODO: review the behaviour of "refreshing" boolean
+	# TODO: review and remove commented code
 	def reload_display(self, refreshing=True):
 		# Reset the image from the source image
 		self.zoomed = False
