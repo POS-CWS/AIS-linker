@@ -1,6 +1,8 @@
 # AIS Linker
 A tool for overlaying AIS tracks on photobot images, and recording vessel traffic.
 
+This repository is currently being updated with a new user guide, technical document, and demo data. The contents of this readme are out of date, but have been left available until the new documents are complete.
+
 #### Setup
 This tool requires Python 3 with the PyQt5 library added.
 
