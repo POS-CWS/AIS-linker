@@ -8,6 +8,8 @@ import re
 
 from contacts_db import Contact, Contact_db
 
+archivedPrefix = "archived_"
+
 
 class ContactWidget(QWidget):
 
@@ -486,123 +488,277 @@ class GenerateReportGui(QWidget):
 		self.deleteLater()
 
 
-# Popup window for allowing the user to change the database
-class SwitchContactDatabasePopup(QWidget):
-	def __init__(self, targetFunc):
-		super(SwitchContactDatabasePopup, self).__init__()
-		self.setWindowTitle('Select a contact database')
+# ---------------------------
 
-		self.folderList = []
-		self.targetFunc = targetFunc
+class DatabaseSelector(QWidget):
+	def __init__(self, type, setVariableFunc):
+		super(DatabaseSelector, self).__init__()
+		self.setVariableFunc = setVariableFunc
+		self.content = []
 
-		# Find all folders that look like contact databases
-		for folder in os.listdir(os.getcwd()):
-			if os.path.isdir(folder) and re.search(r"contacts_db_.+", folder):
-				self.folderList.append(folder)
+		typeText = 'calibration' if type == 'cali' else 'contacts'
+		self.folderPrefix = 'calibration_db_' if type == 'cali' else 'contacts_db_'
+		self.type = type
 
-		# Set primary layout to window
-		self.mainLayout = QVBoxLayout()
-		self.setLayout(self.mainLayout)
-		# self.setGeometry(400, 250, 1000, 600)
-
-		# Create a button for each data set
-		pos = 1
-		for folder in self.folderList:
-			text = folder[12:]
-			try:
-				with open(os.path.join(folder, "info.txt"), 'r') as infoFile:
-					text += "\n" + infoFile.read()
-					# truncate the file if someone writes a ludicrous description
-					if len(text) > 500:
-						text = text[0:500]
-					btn = QPushButton(text)
-					btn.clicked.connect(partial(self.on_select, folder))
-					self.mainLayout.addWidget(btn)
-			except:
-				print("Warning: could not read folder " + folder + ". Skipping")
-				continue
-
-		# Add option at bottom to create a new database at bottom
-		self.endSpacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
-		self.mainLayout.addSpacerItem(self.endSpacer)
-		self.createNewBtn = QPushButton("Create new data set")
-		self.createNewBtn.clicked.connect(self.create_new_database)
-		self.createNewBtn.setEnabled(False)
-		self.mainLayout.addWidget(self.createNewBtn)
-
-		# force window on front. Note: this line must be before self.show()
-		self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-		self.show()
-
-	def on_select(self, folder):
-		if folder:
-			self.targetFunc(folder)
-		self.deleteLater()
-
-	def create_new_database(self):
-		pass
-
-
-# Popup window for allowing the user to change the database
-class SwitchCalibrateDatabasePopup(QWidget):
-	def __init__(self, targetFunc):
-		super(SwitchCalibrateDatabasePopup, self).__init__()
-		self.setWindowTitle('Select a calibration database')
-
-		self.folderList = []
-		self.targetFunc = targetFunc
-
-		# Find all folders that look like calibration databases
-		for folder in os.listdir(os.getcwd()):
-			if os.path.isdir(folder) and re.search(r"calibration_db_.+", folder):
-				self.folderList.append(folder)
+		self.setWindowTitle('Select {} database'.format(typeText))
 
 		# Set primary layout to window
 		self.mainLayout = QVBoxLayout()
 		self.setLayout(self.mainLayout)
-		# self.setGeometry(400, 250, 1000, 600)
+		# self.setGeometry(450, 300, 400, 500)
 
-		# Create a button for each data set
-		for folder in self.folderList:
-			text = folder[15:]
+		# Set up scroll area
+		self.scrollArea = QScrollArea()
+		self.scrollArea.setWidgetResizable(True)
+		self.scrollWidget = QWidget()
+		self.scrollLayout = QVBoxLayout()
+
+		self.scrollWidget.setLayout(self.scrollLayout)
+		self.scrollArea.setWidget(self.scrollWidget)
+		self.mainLayout.addWidget(self.scrollArea)
+
+		self.populate_scroll_area()
+
+		# Add general buttons at the bottom
+		hLayout = QHBoxLayout()
+		self.mainLayout.addLayout(hLayout)
+
+		newBtn = QPushButton("Create new database")
+		newBtn.clicked.connect(self.on_edit)
+		hLayout.addWidget(newBtn)
+
+		hSpacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+		hLayout.addSpacerItem(hSpacer)
+
+		recoverArchivedBtn = QPushButton("Recover archived databases")
+		recoverArchivedBtn.clicked.connect(self.on_recover_archived)
+		hLayout.addWidget(recoverArchivedBtn)
+
+		self.show()
+
+	def populate_scroll_area(self):
+		# Start by removing all old stuff here
+		for item in self.content:
+			item.deleteLater()
+		self.content = []
+
+		# Find all folders that look like the correct type of database
+		folderList = []
+		for folder in os.listdir(os.getcwd()):
+			if os.path.isdir(folder) and re.match(self.folderPrefix, folder):
+				folderList.append(folder)
+
+		# Add each to scroll area
+		for folder in folderList:
+			name = folder[len(self.folderPrefix):]
 			try:
 				with open(os.path.join(folder, "info.txt"), 'r') as infoFile:
-					text += "\n" + infoFile.read()
+					description = infoFile.read()
 					# truncate the file if someone writes a ludicrous description
-					if len(text) > 500:
-						text = text[0:500]
-					btn = QPushButton(text)
-					btn.clicked.connect(partial(self.on_select, folder))
-					self.mainLayout.addWidget(btn)
+					if len(description) > 500:
+						description = description[0:500] + '...'
+
+					hLayout = QHBoxLayout()
+					self.scrollLayout.addLayout(hLayout)
+
+					nameLbl = QLabel(name)
+					hLayout.addWidget(nameLbl)
+
+					selectBtn = QPushButton("Select")
+					selectBtn.clicked.connect(partial(self.on_select, folder))
+					hLayout.addWidget(selectBtn)
+
+					editBtn = QPushButton("Edit")
+					editBtn.clicked.connect(partial(self.on_edit, folder))
+					hLayout.addWidget(editBtn)
+
+					archiveBtn = QPushButton("Archive")
+					archiveBtn.clicked.connect(partial(self.on_archive, folder))
+					hLayout.addWidget(archiveBtn)
+
+					selectBtn.setMaximumWidth(80)
+					selectBtn.setMinimumWidth(80)
+					editBtn.setMaximumWidth(80)
+					editBtn.setMinimumWidth(80)
+					archiveBtn.setMaximumWidth(80)
+					archiveBtn.setMinimumWidth(80)
+
+					descriptionLbl = QLabel(description)
+					descriptionLbl.setWordWrap(True)
+					self.scrollLayout.addWidget(descriptionLbl)
+
+					self.content.extend([nameLbl, descriptionLbl, selectBtn, editBtn, archiveBtn])
+
 			except:
 				print("Warning: could not read folder " + folder + ". Skipping")
 				continue
 
-		# Add option at bottom to create a new database at bottom
-		self.endSpacer = QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding)
-		self.mainLayout.addSpacerItem(self.endSpacer)
-		self.createNewBtn = QPushButton("Create new data set")
-		self.createNewBtn.clicked.connect(self.create_new_database)
-		self.createNewBtn.setEnabled(False)
-		self.mainLayout.addWidget(self.createNewBtn)
-
-		# force window to front. Note: this line must be before self.show()
-		self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-		self.show()
-
-	def on_select(self, folder):
-		if folder:
-			self.targetFunc(folder)
+	def on_select(self, foldername):
+		if foldername:
+			self.setVariableFunc(foldername)
 		self.deleteLater()
 
-	def create_new_database(self):
+	def on_edit(self, foldername=None):
+		creator = cali_DB_constructor if self.type == 'cali' else contacts_DB_constructor
+		self.databaseCreateEdit = creator(self.populate_scroll_area, foldername)
+
+	def on_archive(self, foldername):
+		global archivedPrefix
+		msgbox = QMessageBox(QMessageBox.Question, "Confirm archive",
+							 "Are you sure you want to archive {}?".format(foldername[len(self.folderPrefix):]))
+		msgbox.addButton(QMessageBox.Yes)
+		msgbox.addButton(QMessageBox.Cancel)
+
+		reply = msgbox.exec()
+		if reply != QMessageBox.Yes:
+			return
+
+		os.rename(foldername, archivedPrefix + foldername)
+		self.populate_scroll_area()
+
+	def on_recover_archived(self):
+		self.recoverer = Database_recoverer(self.type, self.populate_scroll_area)
+
+
+class Database_recoverer(QWidget):
+	def __init__(self, type, onDeleteCallback):
+		super(Database_recoverer, self).__init__()
+
+		self.folderPrefix = 'calibration_db_' if type == 'cali' else 'contacts_db_'
+		self.content = []
+		self.onDeleteCallback = onDeleteCallback
+
+		typeText = 'calibration' if type == 'cali' else 'contacts'
+		self.setWindowTitle('Restore archived {} databases'.format(typeText))
+
+		# Set primary layout to window
+		self.mainLayout = QVBoxLayout()
+		self.setLayout(self.mainLayout)
+
+		# Set up scroll area
+		self.scrollArea = QScrollArea()
+		self.scrollArea.setWidgetResizable(True)
+		self.scrollWidget = QWidget()
+		self.scrollLayout = QVBoxLayout()
+
+		self.scrollWidget.setLayout(self.scrollLayout)
+		self.scrollArea.setWidget(self.scrollWidget)
+		self.mainLayout.addWidget(self.scrollArea)
+
+		self.populate_scroll_area()
+
+		# Add close button at the bottom
+		hLayout = QHBoxLayout()
+		self.mainLayout.addLayout(hLayout)
+
+		hSpacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+		hLayout.addSpacerItem(hSpacer)
+
+		recoverArchivedBtn = QPushButton("Done")
+		recoverArchivedBtn.clicked.connect(self.close_window)
+		hLayout.addWidget(recoverArchivedBtn)
+
+		self.show()
+
+	def populate_scroll_area(self):
+		global archivedPrefix
+		# Start by removing all old stuff here
+		for item in self.content:
+			item.deleteLater()
+		self.content = []
+
+		# Find all folders that look like the correct type of database
+		folderList = []
+		for folder in os.listdir(os.getcwd()):
+			if os.path.isdir(folder) and re.match(archivedPrefix + self.folderPrefix, folder):
+				folderList.append(folder)
+
+		# Add each to scroll area
+		for folder in folderList:
+			name = folder[len(archivedPrefix + self.folderPrefix):]
+			try:
+				with open(os.path.join(folder, "info.txt"), 'r') as infoFile:
+					description = infoFile.read()
+					# truncate the file if someone writes a ludicrous description
+					if len(description) > 500:
+						description = description[0:500] + '...'
+
+					hLayout = QHBoxLayout()
+					self.scrollLayout.addLayout(hLayout)
+
+					nameLbl = QLabel(name)
+					hLayout.addWidget(nameLbl)
+
+					recoverBtn = QPushButton("Recover")
+					recoverBtn.clicked.connect(partial(self.on_recover_archived, folder))
+					hLayout.addWidget(recoverBtn)
+
+					recoverBtn.setMaximumWidth(80)
+					recoverBtn.setMinimumWidth(80)
+
+					descriptionLbl = QLabel(description)
+					descriptionLbl.setWordWrap(True)
+					self.scrollLayout.addWidget(descriptionLbl)
+
+					self.content.extend([nameLbl, descriptionLbl, recoverBtn])
+
+			except:
+				print("Warning: could not read folder " + folder + ". Skipping")
+				continue
+
+	def on_recover_archived(self, foldername):
+		global archivedPrefix
+		os.rename(foldername, foldername[len(archivedPrefix):])
+		self.populate_scroll_area()
+
+	def close_window(self):
+		self.onDeleteCallback()
+		self.deleteLater()
+
+class cali_DB_constructor(QWidget):
+	def __init__(self, onDeleteCallback, foldername=None):
+		super(cali_DB_constructor, self).__init__()
+		self.foldername = foldername
+		self.onDeleteCallback = onDeleteCallback
+
+		self.setWindowTitle('{} calibration database:'.format("Edit" if foldername else "New"))
+
+		if foldername and os.path.exists(foldername):
+			self.load_db()
+
+	def load_db(self):
 		pass
 
+	def save_db(self):
+		pass
 
-# GUI unit for recalibrating the georectifier. Is NOT persistent between sessions
-class recalibrate(QWidget):
-	def __init__(self, targetFunc):
-		super(recalibrate, self).__init__()
+	def close_window(self):
+		self.onDeleteCallback()
+		self.deleteLater()
+
+
+class contacts_DB_constructor(QWidget):
+	def __init__(self, onDeleteCallback, foldername=None):
+		super(contacts_DB_constructor, self).__init__()
+		self.foldername = foldername
+		self.onDeleteCallback = onDeleteCallback
+
+		self.setWindowTitle('{} contacts database:'.format("Edit" if foldername else "New"))
+
+		if foldername and os.path.exists(foldername):
+			self.load_db()
+
+	def load_db(self):
+		pass
+
+	def save_db(self):
+		pass
+
+	def close_window(self):
+		self.onDeleteCallback()
+		self.deleteLater()
+
+# ---------------------------
 
 
 # https://stackoverflow.com/questions/5671354/how-to-programmatically-make-a-horizontal-line-in-qt

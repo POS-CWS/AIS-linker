@@ -558,7 +558,7 @@ class Program(QMainWindow):
 		self.reportWin = GenerateReportGui(self.contactsDB.create_vessel_report, self.caliDB, 'vessel_report')
 
 	def change_contact_db_caller(self):
-		self.changeDBWin = SwitchContactDatabasePopup(self.change_contact_db)
+		self.changeDBWin = DatabaseSelector('contacts', self.change_contact_db)
 
 	def change_contact_db(self, folderName):
 		# Save any changes to the current database
@@ -576,6 +576,9 @@ class Program(QMainWindow):
 
 	def save_contact_db(self):
 		self.contactsDB.save_db()
+
+	def change_calibrate_db_caller(self):
+		self.changeDBWin = DatabaseSelector('cali', self.change_calibrate_db)
 
 	# Starts displaying images for the user to go through to calibrate the distance calculations
 	# Calibration data is stored in its own database that must be selected on startup (TODO)
@@ -750,9 +753,6 @@ class Program(QMainWindow):
 		if self.caliWidg:
 			self.caliWidg.set_point(x, y)
 
-	def change_calibrate_db_caller(self):
-		self.changeDBWin = SwitchCalibrateDatabasePopup(self.change_calibrate_db)
-
 	def change_calibrate_db(self, folderName):
 		# Save any changes to the current database
 		self.caliDB.save_db()
@@ -867,9 +867,6 @@ class Program(QMainWindow):
 	def link_ais(self, mmsi):
 		if self.contactWidg:
 			self.contactWidg.link_ais(mmsi, self.caliDB.aisDB.is_A(mmsi))
-
-	def demo_init(self):
-		self.load_image_set("C:/Workspace/clickytool/Vessels")
 
 
 def main():
