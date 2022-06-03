@@ -772,17 +772,17 @@ class Cali_DB_constructor(QWidget):
 		self.heightEdits = []
 		for i in range(1, 4):
 			latEdit = QLineEdit()
-			latEdit.setValidator(QtGui.QIntValidator())
+			latEdit.setValidator(QtGui.QDoubleValidator())
 			self.gridLayout.addWidget(latEdit, i, 1)
 			self.latEdits.append(latEdit)
 
 			longEdit = QLineEdit()
-			longEdit.setValidator(QtGui.QIntValidator())
+			longEdit.setValidator(QtGui.QDoubleValidator())
 			self.gridLayout.addWidget(longEdit, i, 2)
 			self.longEdits.append(longEdit)
 
 			heightEdit = QLineEdit()
-			heightEdit.setValidator(QtGui.QIntValidator())
+			heightEdit.setValidator(QtGui.QDoubleValidator())
 			self.gridLayout.addWidget(heightEdit, i, 3)
 			self.heightEdits.append(heightEdit)
 
@@ -797,13 +797,17 @@ class Cali_DB_constructor(QWidget):
 		self.boundingBoxLayout.addWidget(QLabel("Longitude:"), 2, 0)
 
 		self.latEditH = QLineEdit()
+		self.latEditH.setValidator(QtGui.QDoubleValidator())
 		self.boundingBoxLayout.addWidget(self.latEditH, 1, 2)
 		self.latEditL = QLineEdit()
+		self.latEditL.setValidator(QtGui.QDoubleValidator())
 		self.boundingBoxLayout.addWidget(self.latEditL, 1, 1)
 
 		self.longEditH = QLineEdit()
+		self.longEditH.setValidator(QtGui.QDoubleValidator())
 		self.boundingBoxLayout.addWidget(self.longEditH, 2, 2)
 		self.longEditL = QLineEdit()
+		self.longEditL.setValidator(QtGui.QDoubleValidator())
 		self.boundingBoxLayout.addWidget(self.longEditL, 2, 1)
 
 		# General controls at bottom
@@ -852,7 +856,7 @@ class Cali_DB_constructor(QWidget):
 				splt = line.split(":")
 				if len(splt) == 2:
 					try:
-						metaDict[splt[0]].setText(splt[1])
+						metaDict[splt[0]].setText(splt[1].strip())
 					except:
 						print("unidentified line in cali db edit load")
 						print(line)
@@ -875,22 +879,22 @@ class Cali_DB_constructor(QWidget):
 			infoFile.write(description)
 
 		with open(os.path.join(self.prefix + name, "meta.txt"), 'w+') as metaFile:
-			metaFile.write("camlat:{}".format(self.latEdits[0].text()))
-			metaFile.write("camlon:{}".format(self.longEdits[0].text()))
-			metaFile.write("camheight:{}\n".format(self.heightEdits[0].text()))
+			metaFile.write("camlat:{}\n".format(self.latEdits[0].text()))
+			metaFile.write("camlon:{}\n".format(self.longEdits[0].text()))
+			metaFile.write("camheight:{}\n\n".format(self.heightEdits[0].text()))
 
-			metaFile.write("ref1lat:{}".format(self.latEdits[1].text()))
-			metaFile.write("ref1lon:{}".format(self.longEdits[1].text()))
-			metaFile.write("ref1height:{}\n".format(self.heightEdits[1].text()))
+			metaFile.write("ref1lat:{}\n".format(self.latEdits[1].text()))
+			metaFile.write("ref1lon:{}\n".format(self.longEdits[1].text()))
+			metaFile.write("ref1height:{}\n\n".format(self.heightEdits[1].text()))
 
-			metaFile.write("ref2lat:{}".format(self.latEdits[2].text()))
-			metaFile.write("ref2lon:{}".format(self.longEdits[2].text()))
-			metaFile.write("ref2height:{}\n".format(self.heightEdits[2].text()))
+			metaFile.write("ref2lat:{}\n".format(self.latEdits[2].text()))
+			metaFile.write("ref2lon:{}\n".format(self.longEdits[2].text()))
+			metaFile.write("ref2height:{}\n\n".format(self.heightEdits[2].text()))
 
-			metaFile.write("latH:{}".format(self.latEditH.text()))
-			metaFile.write("latL:{}".format(self.latEditL.text()))
-			metaFile.write("lonH:{}".format(self.longEditH.text()))
-			metaFile.write("lonL:{}\n".format(self.longEditL.text()))
+			metaFile.write("latH:{}\n".format(self.latEditH.text()))
+			metaFile.write("latL:{}\n".format(self.latEditL.text()))
+			metaFile.write("lonH:{}\n".format(self.longEditH.text()))
+			metaFile.write("lonL:{}\n\n".format(self.longEditL.text()))
 
 			metaFile.write("aisFolder:{}".format(self.aisEdit.text()))
 
