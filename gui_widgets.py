@@ -599,7 +599,7 @@ class DatabaseSelector(QWidget):
 		self.deleteLater()
 
 	def on_edit(self, foldername=None):
-		creator = cali_DB_constructor if self.type == 'cali' else contacts_DB_constructor
+		creator = Cali_DB_constructor if self.type == 'cali' else Contacts_DB_constructor
 		self.databaseCreateEdit = creator(self.populate_scroll_area, foldername)
 
 	def on_archive(self, foldername):
@@ -715,44 +715,268 @@ class Database_recoverer(QWidget):
 		self.onDeleteCallback()
 		self.deleteLater()
 
-class cali_DB_constructor(QWidget):
+class Cali_DB_constructor(QWidget):
 	def __init__(self, onDeleteCallback, foldername=None):
-		super(cali_DB_constructor, self).__init__()
-		self.foldername = foldername
+		super(Cali_DB_constructor, self).__init__()
+		self.prefix = "calibration_db_"
+		self.origName = None if not foldername else foldername[len(self.prefix):]			# Also used for new/edit differentiation
 		self.onDeleteCallback = onDeleteCallback
 
-		self.setWindowTitle('{} calibration database:'.format("Edit" if foldername else "New"))
+		self.setWindowTitle('{} calibration database:'.format("New" if not self.origName else "Edit"))
+
+		self.mainLayout = QVBoxLayout()
+		self.setLayout(self.mainLayout)
+
+		# Stuff for database name
+		self.nameLayout = QHBoxLayout()
+		self.nameLayout.addWidget(QLabel("Name:"))
+		self.mainLayout.addLayout(self.nameLayout)
+
+		self.nameEdit = QLineEdit()
+		self.nameLayout.addWidget(self.nameEdit)
+
+		# stuff for database description
+		self.infoLayout = QHBoxLayout()
+		self.infoLayout.addWidget(QLabel("Short description:"))
+		self.mainLayout.addLayout(self.infoLayout)
+
+		self.infoEdit = QTextEdit()
+		self.infoLayout.addWidget(self.infoEdit)
+
+		# AIS folder location
+		self.aisLayout = QHBoxLayout()
+		self.aisLayout.addWidget(QLabel("AIS folder location:"))
+		self.mainLayout.addLayout(self.aisLayout)
+
+		self.aisEdit = QLineEdit()
+		self.aisLayout.addWidget(self.aisEdit)
+
+		self.aisBrowseBtn = QPushButton("Browse...")
+		self.aisBrowseBtn.clicked.connect(partial(self.folder_browse_popup, self.aisEdit))
+		self.aisBrowseBtn.setMaximumWidth(80)
+		self.aisLayout.addWidget(self.aisBrowseBtn)
+
+		# Reference points and related
+		self.mainLayout.addWidget(QHLine())
+		self.gridLayout = QGridLayout()
+		self.mainLayout.addLayout(self.gridLayout)
+		self.gridLayout.addWidget(QLabel("Latitude (degrees)"), 0, 1)
+		self.gridLayout.addWidget(QLabel("Longitude (degrees)"), 0, 2)
+		self.gridLayout.addWidget(QLabel("Elevation (meters)"), 0, 3)
+		self.gridLayout.addWidget(QLabel("Camera:"), 1, 0)
+		self.gridLayout.addWidget(QLabel("Reference point 1:"), 2, 0)
+		self.gridLayout.addWidget(QLabel("Reference point 2:"), 3, 0)
+
+		self.latEdits = []
+		self.longEdits = []
+		self.heightEdits = []
+		for i in range(1, 4):
+			latEdit = QLineEdit()
+			latEdit.setValidator(QtGui.QIntValidator())
+			self.gridLayout.addWidget(latEdit, i, 1)
+			self.latEdits.append(latEdit)
+
+			longEdit = QLineEdit()
+			longEdit.setValidator(QtGui.QIntValidator())
+			self.gridLayout.addWidget(longEdit, i, 2)
+			self.longEdits.append(longEdit)
+
+			heightEdit = QLineEdit()
+			heightEdit.setValidator(QtGui.QIntValidator())
+			self.gridLayout.addWidget(heightEdit, i, 3)
+			self.heightEdits.append(heightEdit)
+
+		# AIS limits
+		self.mainLayout.addWidget(QHLine())
+		self.mainLayout.addWidget(QLabel("Bounding box on camera field of view:"))
+		self.boundingBoxLayout = QGridLayout()
+		self.mainLayout.addLayout(self.boundingBoxLayout)
+		self.boundingBoxLayout.addWidget(QLabel("Minimum"), 0, 1)
+		self.boundingBoxLayout.addWidget(QLabel("Maximum"), 0, 2)
+		self.boundingBoxLayout.addWidget(QLabel("Latitude:"), 1, 0)
+		self.boundingBoxLayout.addWidget(QLabel("Longitude:"), 2, 0)
+
+		self.latEditH = QLineEdit()
+		self.boundingBoxLayout.addWidget(self.latEditH, 1, 2)
+		self.latEditL = QLineEdit()
+		self.boundingBoxLayout.addWidget(self.latEditL, 1, 1)
+
+		self.longEditH = QLineEdit()
+		self.boundingBoxLayout.addWidget(self.longEditH, 2, 2)
+		self.longEditL = QLineEdit()
+		self.boundingBoxLayout.addWidget(self.longEditL, 2, 1)
+
+		# General controls at bottom
+		self.mainLayout.addWidget(QHLine())
+		self.buttonsLayout = QHBoxLayout()
+		self.mainLayout.addLayout(self.buttonsLayout)
+		hSpacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+		self.buttonsLayout.addSpacerItem(hSpacer)
+
+		self.cancelBtn = QPushButton("Cancel")
+		self.cancelBtn.clicked.connect(self.close_window)
+		self.buttonsLayout.addWidget(self.cancelBtn)
+
+		self.saveBtn = QPushButton("Save")
+		self.saveBtn.clicked.connect(self.save_db)
+		self.buttonsLayout.addWidget(self.saveBtn)
 
 		if foldername and os.path.exists(foldername):
 			self.load_db()
 
+		self.show()
+
 	def load_db(self):
-		pass
+		self.nameEdit.setText(self.origName)
+		with open(os.path.join(self.prefix + self.origName, "info.txt"), 'r') as infile:
+			self.infoEdit.setText(infile.read())
+
+		metaDict = {
+			'camlat': self.latEdits[0],
+			'camlon': self.longEdits[0],
+			'camheight': self.heightEdits[0],
+			'ref1lat': self.latEdits[1],
+			'ref1lon': self.longEdits[1],
+			'ref1height': self.heightEdits[1],
+			'ref2lat': self.latEdits[2],
+			'ref2lon': self.longEdits[2],
+			'ref2height': self.heightEdits[2],
+			'latH': self.latEditH,
+			'latL': self.latEditL,
+			'lonH': self.longEditH,
+			'lonL': self.longEditL,
+			'aisFolder': self.aisEdit
+		}
+		with open(os.path.join(self.prefix + self.origName, "meta.txt"), 'r') as infile:
+			for line in infile.readlines():
+				splt = line.split(":")
+				if len(splt) == 2:
+					try:
+						metaDict[splt[0]].setText(splt[1])
+					except:
+						print("unidentified line in cali db edit load")
+						print(line)
 
 	def save_db(self):
-		pass
+		name = self.nameEdit.text()
+		description = self.infoEdit.toPlainText()
+		# TODO: add more validation here
+		if len(name) == 0 or len(description) == 0:
+			# TODO: add warning here
+			return
+
+		if not self.origName:
+			os.mkdir(self.prefix + name)
+		else:
+			if not self.origName == name:
+				os.rename(self.prefix + self.origName, self.prefix + name)
+
+		with open(os.path.join(self.prefix + name, "info.txt"), 'w+') as infoFile:
+			infoFile.write(description)
+
+		with open(os.path.join(self.prefix + name, "meta.txt"), 'w+') as metaFile:
+			metaFile.write("camlat:{}".format(self.latEdits[0].text()))
+			metaFile.write("camlon:{}".format(self.longEdits[0].text()))
+			metaFile.write("camheight:{}\n".format(self.heightEdits[0].text()))
+
+			metaFile.write("ref1lat:{}".format(self.latEdits[1].text()))
+			metaFile.write("ref1lon:{}".format(self.longEdits[1].text()))
+			metaFile.write("ref1height:{}\n".format(self.heightEdits[1].text()))
+
+			metaFile.write("ref2lat:{}".format(self.latEdits[2].text()))
+			metaFile.write("ref2lon:{}".format(self.longEdits[2].text()))
+			metaFile.write("ref2height:{}\n".format(self.heightEdits[2].text()))
+
+			metaFile.write("latH:{}".format(self.latEditH.text()))
+			metaFile.write("latL:{}".format(self.latEditL.text()))
+			metaFile.write("lonH:{}".format(self.longEditH.text()))
+			metaFile.write("lonL:{}\n".format(self.longEditL.text()))
+
+			metaFile.write("aisFolder:{}".format(self.aisEdit.text()))
+
+		self.close_window()
 
 	def close_window(self):
 		self.onDeleteCallback()
 		self.deleteLater()
 
+	# lineEdit will have its text set to wherever the user selects
+	# Borrowed from SonicTrail (copywrite Gregory O'Hagan)
+	def folder_browse_popup(self, lineEdit):
+		folder = QFileDialog.getExistingDirectory(self, "Select Directory")
+		if folder:
+			lineEdit.setText(str(folder))
 
-class contacts_DB_constructor(QWidget):
+
+class Contacts_DB_constructor(QWidget):
 	def __init__(self, onDeleteCallback, foldername=None):
-		super(contacts_DB_constructor, self).__init__()
-		self.foldername = foldername
+		super(Contacts_DB_constructor, self).__init__()
+		self.prefix = "contacts_db_"
+		self.origName = None if not foldername else foldername[len(self.prefix):]			# Also used for new/edit differentiation
 		self.onDeleteCallback = onDeleteCallback
 
-		self.setWindowTitle('{} contacts database:'.format("Edit" if foldername else "New"))
+		self.setWindowTitle('{} contacts database:'.format("New" if not self.origName else "Edit"))
 
-		if foldername and os.path.exists(foldername):
+		self.mainLayout = QVBoxLayout()
+		self.setLayout(self.mainLayout)
+
+		# Stuff for database name
+		self.nameLayout = QHBoxLayout()
+		self.nameLayout.addWidget(QLabel("Name:"))
+		self.mainLayout.addLayout(self.nameLayout)
+
+		self.nameEdit = QLineEdit()
+		self.nameLayout.addWidget(self.nameEdit)
+
+		# stuff for database description
+		self.infoLayout = QHBoxLayout()
+		self.infoLayout.addWidget(QLabel("Short description:"))
+		self.mainLayout.addLayout(self.infoLayout)
+
+		self.infoEdit = QTextEdit()
+		self.infoLayout.addWidget(self.infoEdit)
+
+		# General controls at bottom
+		self.buttonsLayout = QHBoxLayout()
+		self.mainLayout.addLayout(self.buttonsLayout)
+		hSpacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+		self.buttonsLayout.addSpacerItem(hSpacer)
+
+		self.cancelBtn = QPushButton("Cancel")
+		self.cancelBtn.clicked.connect(self.close_window)
+		self.buttonsLayout.addWidget(self.cancelBtn)
+
+		self.saveBtn = QPushButton("Save")
+		self.saveBtn.clicked.connect(self.save_db)
+		self.buttonsLayout.addWidget(self.saveBtn)
+
+		if self.origName:
 			self.load_db()
 
+		self.show()
+
 	def load_db(self):
-		pass
+		self.nameEdit.setText(self.origName)
+		with open(os.path.join(self.prefix + self.origName, "info.txt"), 'r') as infile:
+			self.infoEdit.setText(infile.read())
 
 	def save_db(self):
-		pass
+		name = self.nameEdit.text()
+		description = self.infoEdit.toPlainText()
+		if len(name) == 0 or len(description) == 0:
+			# TODO: add warning here
+			return
+
+		if not self.origName:
+			os.mkdir(self.prefix + name)
+		else:
+			if not self.origName == name:
+				os.rename(self.prefix + self.origName, self.prefix + name)
+
+		with open(os.path.join(self.prefix + name, "info.txt"), 'w+') as infoFile:
+			infoFile.write(description)
+
+		self.close_window()
 
 	def close_window(self):
 		self.onDeleteCallback()
