@@ -237,45 +237,47 @@ class Program(QMainWindow):
 	# Move to and display the next image in sequence
 	def next_img(self):
 		if self.imageIndex < len(self.imageList) - 1:
+			# Set display to next image, plus shuffle cached images
 			self.imageIndex += 1
-			# Set display to next image
 			self.prevIm = self.currIm
 			self.currIm = self.nextIm
 			self.reload_display(False)
 
-			# Asynchronously load new "next" image, after a brief time to ensure display updates
+			# Asynchronously load new "next" image. Brief delay ensures display updates before next image loads
 			QtCore.QTimer.singleShot(100, self.load_next_img)
 
 	# Move to and display the previous image in sequence
 	def prev_img(self):
 		if self.imageIndex > 0:
+			# Set display to previous image, plus shuffle cached images
 			self.imageIndex -= 1
-			# Set display to the previous image
 			self.nextIm = self.currIm
 			self.currIm = self.prevIm
 			self.reload_display(False)
 
-			# Asynchronously load new "prev" image, after a brief time to ensure display updates
+			# Asynchronously load new "previous" image. Brief delay ensures display updates before next image loads
 			QtCore.QTimer.singleShot(100, self.load_prev_img)
 
 	# Jumps to a specific image by index
+	# If this function gets a number as a parameter, jump directly there, no further input required
+	# If this function does _not_, it first prompts the user for an image number.
 	def goto_img(self, num=None):
 		ok = True
 		if type(num) == bool:
+			# The +1/-1's translate from 0-indexing (for python) and 1-indexing (for the user input)
 			num, ok = QInputDialog.getInt(self, "Jump to image", "Enter a number from 1 to " + str(len(self.imageList)), min=1, max=len(self.imageList))
 			if num:
-				num -= 1			# Index starts at 0 for the program, but at 1 for the user
+				num -= 1
 		if ok:
 			# Load the selected image
 			self.imageIndex = num
 			self.load_curr_img()
 			self.reload_display(False)
-			# Cache the new previous and next image
+			# Cache the new previous and next image. Delay makes sure that this happens after the display updates
 			QtCore.QTimer.singleShot(100, self.load_next_img)
 			QtCore.QTimer.singleShot(100, self.load_prev_img)
 
-	# Jumps to the image that is closest to the chosen time
-	# TODO: review this function
+	# Jumps to the first image before the target time
 	def goto_img_time(self):
 		num, ok = QInputDialog.getInt(self, "Jump to time", "Enter a time in form: (day/day)hour/hour/minute/minute/second/second")
 		if ok and num >= 10000 and num < 100000000:
@@ -288,10 +290,7 @@ class Program(QMainWindow):
 			newIndex = self.imageIndex
 			maxIndex = len(self.imageList) - 1
 
-			# Will end on the image immediately before the time, or the first image if applicable
-			# print("target time:")
-			# print(targetTime)
-
+			# Get the image immediately before the time, or the first image if no such image exists
 			targSecTime = sec_time(targetTime)
 			newSecTime = sec_time(file_time(self.imageList[newIndex]))
 			while targSecTime > newSecTime and newIndex < maxIndex:
@@ -301,8 +300,7 @@ class Program(QMainWindow):
 				newIndex -= 1
 				newSecTime = sec_time(file_time(self.imageList[newIndex]))
 
-			# print("Selected time:")
-			# print(file_time(self.imageList[newIndex]))
+			# Update display, then cache the new previous/next image. Delays enforce this ordering
 			self.imageIndex = newIndex
 			self.load_curr_img()
 			self.reload_display(False)
@@ -324,16 +322,14 @@ class Program(QMainWindow):
 			self.dateLbl.setText(self.months[time[1]] + " " + str(time[2]))
 			self.timeLbl.setText(self.build_time_string(time))
 		else:
+			self.dateLbl.setText("-")
 			self.timeLbl.setText("-")
-
-		timeObj = datetime.datetime(*time)
-		# self.caliDB.update_geo(timeObj)		# unneeded because each caliDB method takes the time as a parameter
 
 		# Reset click-able locations
 		self.poi = []
 
 		if self.mode == '':
-			# Draw contacts on the image (also sets click-able locations
+			# Draw contacts on the image (also sets click-able locations)
 			self.draw_contacts()
 
 			# Draw AIS lines on the image
@@ -361,8 +357,6 @@ class Program(QMainWindow):
 		self.imLabel.setPixmap(self.dispImg)
 		self.imIndexLabel.setText("Image " + str(self.imageIndex + 1) + "/" + str(len(self.imageList)))
 
-
-
 		# Update contact tallies (form: "0 AIS, 0 non-AIS, 0 marine mammal")
 		text = str(self.contactsDB.count_ais_contacts()) + " AIS, " \
 			   + str(self.contactsDB.count_nonais_contacts()) + " non-AIS\n" \
@@ -370,6 +364,7 @@ class Program(QMainWindow):
 			   + str(self.contactsDB.count_misc_contacts()) + " marine mammal"
 		self.countsLabel.setText(text)
 
+	# Place contact markers on the screen for any active contacts
 	def draw_contacts(self):
 		painter = QPainter()
 		painter.begin(self.dispImg)
@@ -409,19 +404,19 @@ class Program(QMainWindow):
 			painter.drawLine(p1[0], p1[1], p2[0], p2[1])
 			painter.drawLine(p3[0], p1[1], p4[0], p2[1])
 
-			# Make contact click-able
+			# Add location to the list of points that can be clicked
 			self.poi.append((contact.x, contact.y, contact))
 
 		painter.end()
 
+	# Draws interpolated lines for each AIS track
 	def draw_ais(self):
-
 		painter = QPainter()
 		painter.begin(self.dispImg)
 		ais_a_pen = QPen(colA, 2)
 		ais_b_pen = QPen(colB, 2)
 
-		# correct for image scaling
+		# calculate scaling factors for current display size
 		xf = float(self.dispImg.width()) / self.currIm.width()
 		yf = float(self.dispImg.height()) / self.currIm.height()
 
@@ -448,18 +443,15 @@ class Program(QMainWindow):
 				if len(p) < 3:
 					gpsPoints.pop(i)
 					continue
-				# print(p)
 				if self.caliDB.get_dist_from_coords(p[1], p[2]) > self.AISRenderDistance:
 					gpsPoints.pop(i)
-					# print("dropping point with coords:", p[1], p[2], ". Distance: ", self.caliDB.get_dist_from_coords(p[1], p[2]))
 				else:
 					i += 1
 
-			# Skip track if we don't have enough points to draw it
+			# Skip the track if we don't have enough points to draw it
 			if len(gpsPoints) < 2:
 				continue
 			p = self.caliDB.get_xy(gpsPoints[0][1], gpsPoints[0][2], currTimeObj)
-			print(p)
 			painter.drawLine(p[0] * xf, p[1] * yf + 5, p[0] * xf, p[1] * yf - 5)
 
 			gpsPoints = []
@@ -479,16 +471,19 @@ class Program(QMainWindow):
 
 		painter.end()
 
+	# Zooms in on the target location of the image and displays that zoomed-in version in the main display
 	def show_zoomed(self, x, y):
 		# Zooming only makes sense if the image width and height are greater than the display
 		if self.imWidget.width() >= self.currIm.width() or self.imWidget.height() >= self.currIm.height():
 			return
 
 		self.zoomed = True
+		# Calculate image position to be centered on the clicked point, if possible
+		# If this is close to an edge of the image, instead use
 		minX = x - self.imWidget.width() // 2
 		maxX = x + self.imWidget.width() // 2
 		if minX < 0:
-			maxX -= minX    # this actually increases maxX
+			maxX -= minX    # due to negatives, this increases maxX
 			minX = 0
 		if maxX > self.currIm.width():
 			minX -= maxX - self.currIm.width()
@@ -511,27 +506,32 @@ class Program(QMainWindow):
 
 		self.imLabel.setPixmap(self.dispImg)
 
+	# Loads and caches the currently selected image. Does not update the display
 	def load_curr_img(self):
 		self.currIm = QPixmap(self.imageList[self.imageIndex])
 
+	# Loads and caches the image after the currently selected image
 	def load_next_img(self):
 		if self.imageIndex + 1 < len(self.imageList):
 			self.nextIm = QPixmap(self.imageList[self.imageIndex + 1])
 		else:
 			self.nextIm = None
 
+	# Loads and caches the image before the currently selected image
 	def load_prev_img(self):
 		if self.imageIndex - 1 < len(self.imageList) and self.imageIndex > 0:
 			self.prevIm = QPixmap(self.imageList[self.imageIndex - 1])
 		else:
 			self.prevIm = None
 
-	# Loads a new folder of input images
+	# selects a folder of input images
+	# If this function is not provided with a folder name, it instead prompts the user for one before continuing
 	def load_image_set(self, folder=None):
 		if not folder:
 			folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
 			if not folder:
 				return
+
 		self.imageList = []
 		for file in os.listdir(folder):
 			if file.endswith('.jpg') or file.endswith('.png'):
