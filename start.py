@@ -452,7 +452,7 @@ class Program(QMainWindow):
 			if len(gpsPoints) < 2:
 				continue
 			p = self.caliDB.get_xy(gpsPoints[0][1], gpsPoints[0][2], currTimeObj)
-			painter.drawLine(p[0] * xf, p[1] * yf + 5, p[0] * xf, p[1] * yf - 5)
+			painter.drawLine(int(p[0] * xf), int(p[1] * yf + 5), int(p[0] * xf), int(p[1] * yf - 5))
 
 			gpsPoints = []
 			pointTime = currTime[:]
@@ -467,7 +467,7 @@ class Program(QMainWindow):
 			for i in range(2, len(gpsPoints)):
 				p2 = p
 				p = self.caliDB.get_xy(gpsPoints[i][1], gpsPoints[i][2], currTimeObj)
-				painter.drawLine(p[0] * xf, p[1] * yf, p2[0] * xf, p2[1] * yf)
+				painter.drawLine(int(p[0] * xf), int(p[1] * yf), int(p2[0] * xf), int(p2[1] * yf))
 
 		painter.end()
 
