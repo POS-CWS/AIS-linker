@@ -5,7 +5,8 @@ Processed_ais/
 *.csv
 .idea/*
 calibration*
-test*
+test *
+test_data_set/*
 test_minimal_set*
 images/
 archived_*
