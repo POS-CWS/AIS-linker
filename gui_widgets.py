@@ -796,19 +796,19 @@ class Cali_DB_constructor(QWidget):
 		self.boundingBoxLayout.addWidget(QLabel("Latitude:"), 1, 0)
 		self.boundingBoxLayout.addWidget(QLabel("Longitude:"), 2, 0)
 
-		self.latEditH = QLineEdit()
-		self.latEditH.setValidator(QtGui.QDoubleValidator())
-		self.boundingBoxLayout.addWidget(self.latEditH, 1, 2)
 		self.latEditL = QLineEdit()
 		self.latEditL.setValidator(QtGui.QDoubleValidator())
 		self.boundingBoxLayout.addWidget(self.latEditL, 1, 1)
+		self.latEditH = QLineEdit()
+		self.latEditH.setValidator(QtGui.QDoubleValidator())
+		self.boundingBoxLayout.addWidget(self.latEditH, 1, 2)
 
-		self.longEditH = QLineEdit()
-		self.longEditH.setValidator(QtGui.QDoubleValidator())
-		self.boundingBoxLayout.addWidget(self.longEditH, 2, 2)
 		self.longEditL = QLineEdit()
 		self.longEditL.setValidator(QtGui.QDoubleValidator())
 		self.boundingBoxLayout.addWidget(self.longEditL, 2, 1)
+		self.longEditH = QLineEdit()
+		self.longEditH.setValidator(QtGui.QDoubleValidator())
+		self.boundingBoxLayout.addWidget(self.longEditH, 2, 2)
 
 		# General controls at bottom
 		self.mainLayout.addWidget(QHLine())
@@ -864,10 +864,18 @@ class Cali_DB_constructor(QWidget):
 	def save_db(self):
 		name = self.nameEdit.text()
 		description = self.infoEdit.toPlainText()
-		# TODO: add more validation here
-		if len(name) == 0 or len(description) == 0:
-			# TODO: add warning here
+		if len(name) == 0:
+			self.show_warning_box("Unable to save: name is required")
 			return
+		if len(description) == 0:
+			self.show_warning_box("Unable to save: description is required")
+			return
+
+		for box in (self.latEdits[0], self.latEdits[1], self.latEdits[2], self.longEdits[0], self.longEdits[1],
+				  self.longEdits[2], self.heightEdits[0], self.heightEdits[1], self.heightEdits[2]):
+			if len(box.text()) < 1:
+				self.show_warning_box("Unable to save: required reference or camera data missing")
+				return
 
 		if not self.origName:
 			os.mkdir(self.prefix + name)
@@ -891,10 +899,15 @@ class Cali_DB_constructor(QWidget):
 			metaFile.write("ref2lon:{}\n".format(self.longEdits[2].text()))
 			metaFile.write("ref2height:{}\n\n".format(self.heightEdits[2].text()))
 
-			metaFile.write("latH:{}\n".format(self.latEditH.text()))
-			metaFile.write("latL:{}\n".format(self.latEditL.text()))
-			metaFile.write("lonH:{}\n".format(self.longEditH.text()))
-			metaFile.write("lonL:{}\n\n".format(self.longEditL.text()))
+			# only write these if the necessary data is present:
+			if len(self.latEditH.text()) > 0:
+				metaFile.write("latH:{}\n".format(self.latEditH.text()))
+			if len(self.latEditL.text()) > 0:
+				metaFile.write("latL:{}\n".format(self.latEditL.text()))
+			if len(self.longEditH.text()) > 0:
+				metaFile.write("lonH:{}\n".format(self.longEditH.text()))
+			if len(self.longEditL.text()) > 0:
+				metaFile.write("lonL:{}\n\n".format(self.longEditL.text()))
 
 			metaFile.write("aisFolder:{}".format(self.aisEdit.text()))
 
@@ -910,6 +923,12 @@ class Cali_DB_constructor(QWidget):
 		folder = QFileDialog.getExistingDirectory(self, "Select Directory")
 		if folder:
 			lineEdit.setText(str(folder))
+
+	@staticmethod
+	def show_warning_box(message):
+		msg = QMessageBox()
+		msg.setText(message)
+		msg.exec_()
 
 
 class Contacts_DB_constructor(QWidget):
@@ -967,8 +986,11 @@ class Contacts_DB_constructor(QWidget):
 	def save_db(self):
 		name = self.nameEdit.text()
 		description = self.infoEdit.toPlainText()
-		if len(name) == 0 or len(description) == 0:
-			# TODO: add warning here
+		if len(name) == 0:
+			self.show_warning_box("Unable to save: missing name")
+			return
+		if len(description) == 0:
+			self.show_warning_box("Unable to save: missing description")
 			return
 
 		if not self.origName:
@@ -985,6 +1007,12 @@ class Contacts_DB_constructor(QWidget):
 	def close_window(self):
 		self.onDeleteCallback()
 		self.deleteLater()
+
+	@staticmethod
+	def show_warning_box(message):
+		msg = QMessageBox()
+		msg.setText(message)
+		msg.exec_()
 
 # ---------------------------
 

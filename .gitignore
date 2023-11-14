@@ -1,7 +1,7 @@
 *.pyc
 ais_db_*
 contacts_db_*
-Processed_ais/
+Processed_ais*
 *.csv
 .idea/*
 calibration*

@@ -836,6 +836,12 @@ class Program(QMainWindow):
 		except:
 			pass
 		geo = self.caliDB.get_geopoint_from_xy(x, y, 0, datetime.datetime(*file_time(self.imageList[self.imageIndex])))
+		if not geo:
+			msg = QMessageBox()
+			msg.setText("Error: could not create datapoint due to missing/limited calibration data. Please calibrate an image, then try again")
+			msg.exec_()
+			return
+
 		self.contactWidg = ContactWidget(file_time(self.imageList[self.imageIndex]), x, y, self.contactsDB,
 					geo.dist, geo.lat, geo.lon, self.reload_display)
 		self.contactScrollLayout.addWidget(self.contactWidg)

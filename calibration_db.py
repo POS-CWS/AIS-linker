@@ -115,7 +115,11 @@ class Calibration_db:
 		else:
 			future = self.date + datetime.timedelta(days=1)
 			past = self.date - datetime.timedelta(days=1)
+			daysTried = 1
 			while True:
+				if daysTried > 365 * 2:
+					return
+				daysTried += 1
 				# try next day
 				futureName = os.path.join(self.folder, str(future.year), str(future.month), str(future.day) + '.csv')
 				# check if file exists
@@ -180,11 +184,13 @@ class Calibration_db:
 		self.newData = False
 
 	def get_xy(self, lat, lon, time):
-		self.update_geo(time)
+		if not (self.update_geo(time)):
+			return None
 		return self.geo.get_xy(lat, lon)
 
 	def get_geopoint_from_xy(self, x, y, height, time):
-		self.update_geo(time)
+		if not (self.update_geo(time)):
+			return None
 		return self.geo.get_geopoint_from_xy(x, y, height)
 
 	def get_dist_from_coords(self, lat, lon):
@@ -202,6 +208,10 @@ class Calibration_db:
 	def update_geo(self, time):
 		# update database time if needed
 		self.switch_day(time)
+
+		# If no calibration data exists, return nothing
+		if len(self.locatorPoints) == 0:
+			return False
 
 		# If target is out of list range, just use closest point
 		newRef1Coords, newRef2Coords = [0, 0], [0, 0]
@@ -237,6 +247,8 @@ class Calibration_db:
 			self.lastRef1Coords = newRef1Coords
 			self.lastRef2Coords = newRef2Coords
 			self.geo.init()
+
+		return True
 
 
 	# Returns true if it has a calibration point within 'hoursOK' hours
