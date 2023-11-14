@@ -11,8 +11,8 @@ class Calibration_db:
 		self.cameraPos = [0, 0, 0]
 		self.ref1Pos = [0, 0, 0]
 		self.ref2Pos = [0, 0, 0]
-		self.latBounds = [0, 0]
-		self.lonBounds = [0, 0]
+		self.latBounds = [-90, 90]
+		self.lonBounds = [-180, 180]
 		self.locatorPoints = []
 
 		self.geo = Georectifier(imWidth, imHeight)
